@@ -8,6 +8,8 @@ from services.register import RegisterHandler
 from services.authenticate import AuthenticationHandler
 from models.person import Person
 
+from serial import Serial
+
 mongo_conn = MongodbConnectionHandler(db="rfid").connect()
 
 registration_handler = RegisterHandler(mongo_conn, 'tag')
@@ -18,8 +20,9 @@ def now():
     return datetime.now().strftime("%d-%m-%Y %H:%M")
 def read_tag():
     #read serial
-    tag_id.configure(text= 'teste')
-    print(username_textbox.get())
+    ser = Serial(port="/dev/ttyUSB0", baudrate=9600)
+    serial_id = ser.readline().decode("utf-8")[:-2]
+    tag_id.configure(text= serial_id)
 def print_text():
     print(username_textbox.get(0.1, END))
 
@@ -39,8 +42,8 @@ tabview.add("Erase")
 tabview.add("Log")
 tabview.pack()
 
-a = Person(id=45,name='Murilo',last_time=now())
-registration_handler.register(a)
+# a = Person(id=45,name='Murilo',last_time=now())
+# registration_handler.register(a)
 
 
 # Register tab
