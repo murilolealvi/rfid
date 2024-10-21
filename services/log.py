@@ -1,11 +1,8 @@
-import json
+
 from bson.json_util import dumps, loads
-
 from repositories.registry import MongoRepository
-from mongoengine import *
 
-
-class RegisterHandler:
+class LogHandler:
     def __init__(self, connection, collection):
         self.connection = MongoRepository(connection, collection)
 
@@ -16,6 +13,3 @@ class RegisterHandler:
     def erase(self, value):
         self.connection.remove(value)
     
-    def __object_to_document(self, object):
-        return json.loads(json.dumps(object, default= lambda o: o.__dict__))
-

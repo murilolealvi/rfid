@@ -1,7 +1,11 @@
 
+from datetime import datetime
+
+def now():
+    return datetime.now().strftime("%d/%m/%Y %H:%M")
 
 class Person:
-    def __init__(self, id, name, last_time):
+    def __init__(self, id, name):
         self.id = id
         self.name = name
-        self.last_time = last_time
+        self.date_registered = now()

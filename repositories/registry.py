@@ -24,19 +24,16 @@ class MongoRepository:
             {"$pull": {array : value}}
         )
 
-    def remove(self, filter, field):
-        self.__mongo_conn.update_one(
-            {"id": filter.id},
-            {"$unset": {field: ""}}
-        )
+    def remove(self, value):
+        filter = {"id": value}
+        self.__mongo_conn.delete_one(filter)
 
-    def get(self, id):
-        filter = {"id": id}
+    def get(self, value, attribute):
+        filter = {f"{attribute}": value}
         document = self.__mongo_conn.find_one(filter)
         return document
     
-    def get_any(self, filter=None):
-        documents = self.__mongo_conn.find(filter)
-        return documents
+    def distinct(self, field):
+        return self.__mongo_conn.distinct(field)
     
     
