@@ -2,19 +2,23 @@
 import customtkinter as ctk
 from tkinter import *
 from CTkTable import CTkTable
+#from tkcalendar import Calendar, DateEntry
 
 from database.mongo import MongodbConnectionHandler
 from services.register import RegisterHandler
 from services.authenticate import AuthenticationHandler
+from services.log import LogHandler
 from models.person import *
 
 from serial import Serial
 import numpy as np
 
-serial_tty = "/dev/ttyUSB1"
+serial_tty = "/dev/ttyUSB0"
 mongo_conn = MongodbConnectionHandler(db="rfid").connect()
 registration = RegisterHandler(mongo_conn, 'tag')
 authentication = AuthenticationHandler(mongo_conn, 'tag')
+logging = LogHandler(mongo_conn, 'log')
+
 
 def read_tag():
     register_button.configure(state=DISABLED)
@@ -45,33 +49,33 @@ def register_tag():
         register_info_label.configure(text="Insert a name to register...")
 
 def authenticate_by_id():
-    authenticate_username_entry.delete(0,END)
+    check_username_entry.delete(0,END)
     ser = Serial(port=serial_tty, baudrate=9600, timeout=3)
     serial_id = ser.readline().decode("utf-8")[:-2]
     search_user = authentication.authenticate(serial_id, "id")
     if serial_id and search_user:
-        authenticate_username_entry.insert(END, search_user["name"])
-        authenticate_tag_id.configure(text=search_user["id"])
-        authenticate_info_label.configure(text="User authenticated!")
+        check_username_entry.insert(END, search_user["name"])
+        check_tag_id.configure(text=search_user["id"])
+        check_info_label.configure(text="User authenticated!")
     elif serial_id:
-        authenticate_username_entry.delete(0,END)
-        authenticate_tag_id.configure(text=str())
-        authenticate_info_label.configure(text="User not found, try registering it first...")
+        check_username_entry.delete(0,END)
+        check_tag_id.configure(text=str())
+        check_info_label.configure(text="User not found, try registering it first...")
     else:
-        authenticate_username_entry.delete(0,END)
-        authenticate_tag_id.configure(text=str())
-        authenticate_info_label.configure(text="Tag not identified, failed to read...")
+        check_username_entry.delete(0,END)
+        check_tag_id.configure(text=str())
+        check_info_label.configure(text="Tag not identified, failed to read...")
 
 def authenticate_by_name():
-    user = authenticate_username_entry.get()
+    user = check_username_entry.get()
     search_user = authentication.authenticate(user, "name")
     if search_user:
-        authenticate_tag_id.configure(text=search_user["id"])
-        authenticate_info_label.configure(text="User authenticated!")
+        check_tag_id.configure(text=search_user["id"])
+        check_info_label.configure(text="User authenticated!")
     else:
-        authenticate_username_entry.delete(0,END)
-        authenticate_tag_id.configure(text=str())
-        authenticate_info_label.configure(text="User not found, try registering it first...")
+        check_username_entry.delete(0,END)
+        check_tag_id.configure(text=str())
+        check_info_label.configure(text="User not found, try registering it first...")
 
 def erase_by_name():
     erase_button.configure(state=DISABLED)
@@ -115,6 +119,11 @@ def erase():
     erase_tag_id.configure(text=str())
     erase_button.configure(state=DISABLED)
 
+def check_logs():
+    logs = list(set(logging.timelogs) - set(logging_table.get_column(2)))
+    for log in logs[::-1]:
+        entry = logging.find(log)
+        logging_table.add_row(index=1,values=[entry["name"], entry["date"], log])
 
 window = ctk.CTk()
 icon = PhotoImage(file="./icon.png")
@@ -126,9 +135,10 @@ window.minsize(width=750, height=750)
 ctk.set_default_color_theme("dark-blue")
 
 
-tabview = ctk.CTkTabview(master=window, corner_radius=10, width=700, height=700)
+tabview = ctk.CTkTabview(master=window, corner_radius=10, 
+                         width=700, height=700)
 tabview.add("Register")
-tabview.add("Authenticate")
+tabview.add("Check")
 tabview.add("Erase")
 tabview.add("List")
 tabview.pack()
@@ -160,30 +170,30 @@ register_info_label.grid(row=3, column=0, padx=50, pady=20, columnspan=2)
 
 
 # Authenticate tab
-authenticate_username_label = ctk.CTkLabel(master=tabview.tab("Authenticate"), text="Username:", font=("Arial",20))
-authenticate_username_label.grid(row=0, column=0, padx=50, pady=100)
-authenticate_username_entry = ctk.CTkEntry(master=tabview.tab("Authenticate"), width=300, height=40, font=("Arial",18), placeholder_text="User")
-authenticate_username_entry.grid(row=0, column=1, padx=50, pady=50)
+check_username_label = ctk.CTkLabel(master=tabview.tab("Check"), text="Username:", font=("Arial",20))
+check_username_label.grid(row=0, column=0, padx=50, pady=100)
+check_username_entry = ctk.CTkEntry(master=tabview.tab("Check"), width=300, height=40, font=("Arial",18), placeholder_text="User")
+check_username_entry.grid(row=0, column=1, padx=50, pady=50)
 
-authenticate_tag_label = ctk.CTkLabel(master=tabview.tab("Authenticate"), text="Tag ID:", font=("Arial",20), corner_radius=0.5)
-authenticate_tag_label.grid(row=1, column=0, padx=20, pady=50)
+check_tag_label = ctk.CTkLabel(master=tabview.tab("Check"), text="Tag ID:", font=("Arial",20), corner_radius=0.5)
+check_tag_label.grid(row=1, column=0, padx=20, pady=50)
 
-authenticate_tag_id = ctk.CTkLabel(master=tabview.tab("Authenticate"), text=str(), font=("Arial",20, "bold"), corner_radius=0.5)
-authenticate_tag_id.grid(row=1, column=1, padx=20, pady=20)
+check_tag_id = ctk.CTkLabel(master=tabview.tab("Check"), text=str(), font=("Arial",20, "bold"), corner_radius=0.5)
+check_tag_id.grid(row=1, column=1, padx=20, pady=20)
 
-search_name_button = ctk.CTkButton(master=tabview.tab("Authenticate"), text="By Name", font=("Arial",20),
+search_name_button = ctk.CTkButton(master=tabview.tab("Check"), text="By Name", font=("Arial",20),
                             corner_radius=20, height=75, command=authenticate_by_name)
 search_name_button.grid(row=5, column=0, padx=65, pady=20, sticky="w")
 
-search_id_button = ctk.CTkButton(master=tabview.tab("Authenticate"), text="By Tag ID", font=("Arial",20),
+search_id_button = ctk.CTkButton(master=tabview.tab("Check"), text="By Tag ID", font=("Arial",20),
                          corner_radius=20, height=75, command=authenticate_by_id)
 search_id_button.grid(row=5, column=1, padx=65, pady=20, sticky="e")
 
-authenticate_modes_label = ctk.CTkLabel(master=tabview.tab("Authenticate"), text="Authentication Modes:", font=("Arial",16)) 
-authenticate_modes_label.grid(row=4, column=0, padx=20, pady=0, columnspan=2)
+check_modes_label = ctk.CTkLabel(master=tabview.tab("Check"), text="Validation Modes:", font=("Arial",16)) 
+check_modes_label.grid(row=4, column=0, padx=20, pady=0, columnspan=2)
 
-authenticate_info_label = ctk.CTkLabel(master=tabview.tab("Authenticate"), text=str(), font=("Arial",18, "italic")) 
-authenticate_info_label.grid(row=3, column=0, padx=50, pady=50, columnspan=2)
+check_info_label = ctk.CTkLabel(master=tabview.tab("Check"), text=str(), font=("Arial",18, "italic")) 
+check_info_label.grid(row=3, column=0, padx=50, pady=50, columnspan=2)
 
 
 # Erase tab
@@ -218,13 +228,17 @@ erase_info_label.grid(row=3, column=0, padx=50, pady=50, columnspan=2)
 
 
 # List tab
-tables = ctk.CTkTabview(master=tabview.tab("List"), corner_radius=10, width=600, height=600, segmented_button_selected_color="#0384fc")
-tables.add("Log")
+tables = ctk.CTkTabview(master=tabview.tab("List"), corner_radius=10, width=600, height=600, 
+                        segmented_button_selected_color="#0384fc", command=check_logs)
 tables.add("Registration")
+tables.add("Log")
 tables.pack(side=BOTTOM, expand=True)
 
 log_label = ctk.CTkLabel(master=tables.tab("Log"), text="Logging Table", font=("Arial",20))
 log_label.pack(expand=True)
+#date_selector = DateEntry(master=tables.tab("Log"), selectmode='day', date_pattern= 'dd/mm/y')
+#date_selector.pack(expand=True)
+#print(date_selector.get_date().strftime("%d/%m/%Y"))
 
 registration_label = ctk.CTkLabel(master=tables.tab("Registration"), text="Registration Table", font=("Arial",20))
 registration_label.pack(expand=True)
@@ -239,6 +253,19 @@ else:
     registration_table_values = [registration_headers]
 registration_table = CTkTable(master=registration_table_frame, values=list(registration_table_values), header_color="#7d32a8", font=("Arial",16))
 registration_table.pack(expand=True, fill="both", padx=20, pady=20)
+
+#Logging table
+logging_table_frame = ctk.CTkScrollableFrame(master=tables.tab("Log"), fg_color="transparent")
+logging_table_frame.pack(expand=True, fill="both")
+logging_headers = np.array(["Name", "Date", "Time"])
+if logging.log_exists():
+    logging_table_values = np.vstack((logging_headers, logging.dump())) 
+else:
+    logging_table_values = [logging_headers]
+logging_table = CTkTable(master=logging_table_frame, values=list(logging_table_values), header_color="#7d32a8", font=("Arial",16))
+logging_table.pack(expand=True, fill="both", padx=20, pady=20)
+
+
 
 window.mainloop()
 

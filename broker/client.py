@@ -2,10 +2,12 @@ import paho.mqtt.client as mqtt
 
 from database.mongo import MongodbConnectionHandler
 from services.authenticate import AuthenticationHandler
-from models.person import *
+from services.log import LogHandler
+from models.log import Log
 
 mongo_conn = MongodbConnectionHandler(db="rfid").connect()
 authentication = AuthenticationHandler(mongo_conn, 'tag')
+logging = LogHandler(mongo_conn, "log")
 
 class MqttClient:
     def __init__(self, broker_ip, port, client_name, keepalive):
@@ -31,14 +33,14 @@ class MqttClient:
     def message(self, client, userdata, msg):
         payload = msg.payload.decode("utf-8")
         user = authentication.authenticate(payload, "id")
-        print(authentication.authenticate("E3D10B29", "id"))
         topic = "rfid/authentication"
         if user:
             self.__client.publish(topic, user["name"].encode("utf-8"))
+            logging.log(Log(user["name"]))
         else:
             self.__client.publish(topic, str())
         print(msg.topic+": "+ payload)
         print("User: ", user)
-    
+
 
 

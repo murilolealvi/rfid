@@ -4,8 +4,11 @@ class MongoRepository:
     def __init__(self, mongo_conn, collection):
         self.__mongo_conn = mongo_conn[str(collection)]
 
-    def upsert(self, filter, value):
-        filter = {"id": filter.id}
+    def insert(self, object):
+        self.__mongo_conn.insert_one(object)
+
+    def upsert(self, filter, value, attribute="id"):
+        filter = {attribute : filter.id}
         self.__mongo_conn.update_one(
             filter,
             {"$set": value},

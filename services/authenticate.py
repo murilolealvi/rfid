@@ -11,7 +11,6 @@ class AuthenticationHandler:
     def authenticate(self, value, attribute):
         document = self.connection.get(value, attribute)
         return loads(dumps(document))
-    #change last_time
 
     def check(self, value):
         if (self.connection.get(value, "id")):
